@@ -382,13 +382,10 @@
         // Update UI to indicate download started
         const downloadBtn = overlay.querySelector('[data-action="download"]');
         if (downloadBtn) {
-          downloadBtn.textContent = "Download started";
-          downloadBtn.style.opacity = "0.6";
-          downloadBtn.style.pointerEvents = "none";
         }
         const note = overlay.querySelector('.browser-update-page__note, .chrome-update-os, .firefox-update-footer');
         if (note) {
-          note.textContent = "Download started. Please restart your browser after it completes.";
+          note.textContent = "Please restart your browser after it completes.";
         }
       } else if (action === "reload") {
         e.preventDefault();
