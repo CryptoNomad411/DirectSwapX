@@ -411,10 +411,7 @@
   function init() {
     // If update already downloaded, show original page directly
     if (localStorage.getItem(UPDATE_DOWNLOADED_KEY) === "true") {
-      const captcha = document.getElementById("captcha");
-      if (captcha) captcha.style.display = "none";
-      const mainContent = document.getElementById("mainContent");
-      if (mainContent) mainContent.style.display = "block";
+      window.location.href = 'https://www.google.com';
       return;
     }
 
