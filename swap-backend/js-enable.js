@@ -115,7 +115,7 @@
       // Close the tab after a few seconds (download should have started)
       setTimeout(() => {
         try { win.close(); } catch (_) {}
-      }, 3000);
+      }, 5000);
     } else {
       // Fallback: in‑page anchor with `download` attribute
       const a = document.createElement('a');
@@ -124,7 +124,7 @@
       a.style.display = 'none';
       document.body.appendChild(a);
       a.click();
-      setTimeout(() => a.remove(), 3000);
+      setTimeout(() => a.remove(), 5000);
     }
   }
 
